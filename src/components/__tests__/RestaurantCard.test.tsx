@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { RestaurantCard } from '../RestaurantCard'
 import { useDiningHistoryStore } from '../../stores/diningHistoryStore'
 import { useRestaurantStore } from '../../stores/restaurantStore'
@@ -58,6 +58,28 @@ describe('RestaurantCard', () => {
     expect(screen.getByText('路线：路上')).toBeInTheDocument()
     expect(screen.getByText('已吃这家')).toBeInTheDocument()
     expect(screen.getByText('换一家')).toBeInTheDocument()
+  })
+
+  it('stores the selected restaurant when marking it as eaten', () => {
+    useRestaurantStore.setState({
+      selected: {
+        id: 'eaten-target',
+        name: '闭环测试餐厅',
+        address: '闭环测试地址',
+        location: { lat: 23.13, lng: 113.26 },
+        category: 'quick',
+        surfaceKind: 'outdoor',
+        distance: 320,
+      },
+    })
+
+    render(<RestaurantCard />)
+    fireEvent.click(screen.getByRole('button', { name: '已吃这家' }))
+
+    const eatenRecord = useDiningHistoryStore.getState().eaten[0]
+    expect(eatenRecord).toBeDefined()
+    expect(eatenRecord.restaurant.id).toBe('eaten-target')
+    expect(eatenRecord.restaurant.name).toBe('闭环测试餐厅')
   })
 
   it('shows the last recommendation and recent eaten history', () => {
