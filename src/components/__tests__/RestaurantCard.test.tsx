@@ -8,7 +8,14 @@ import { useWishlistStore } from '../../stores/wishlistStore'
 
 describe('RestaurantCard', () => {
   beforeEach(() => {
-    useRestaurantStore.setState({ items: [], selected: null, status: 'idle', error: null })
+    useRestaurantStore.setState({
+      items: [],
+      selected: null,
+      status: 'idle',
+      error: null,
+      cacheState: undefined,
+      lastUpdatedAt: undefined,
+    })
     useDiningHistoryStore.setState({ recommended: [], eaten: [] })
     useFilterStore.setState({
       radius: 1000,
@@ -75,5 +82,27 @@ describe('RestaurantCard', () => {
 
     expect(screen.getByText('上次推荐：上次餐厅')).toBeInTheDocument()
     expect(screen.getByText('最近已吃：已吃餐厅')).toBeInTheDocument()
+  })
+
+  it('shows when results come from cache', () => {
+    useRestaurantStore.setState({
+      items: [],
+      selected: {
+        id: 'cached',
+        name: '缓存餐厅',
+        address: '缓存地址',
+        location: { lat: 23, lng: 113 },
+        category: 'quick',
+        surfaceKind: 'unknown',
+      },
+      status: 'success',
+      error: null,
+      cacheState: 'stale-cache',
+      lastUpdatedAt: 1000,
+    })
+
+    render(<RestaurantCard />)
+
+    expect(screen.getByText('使用离线缓存结果')).toBeInTheDocument()
   })
 })

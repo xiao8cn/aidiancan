@@ -33,7 +33,7 @@ function CompactItem({ restaurant }: { restaurant: Restaurant }) {
 }
 
 export function RestaurantCard() {
-  const { items, selected, pickRandomRestaurant } = useRestaurantStore()
+  const { items, selected, pickRandomRestaurant, cacheState } = useRestaurantStore()
   const filter = useFilterStore()
   const { tags, toggleRestaurantTag, getRestaurantTags } = useWishlistStore()
   const { recommended: recommendedHistory, eaten, addEaten } = useDiningHistoryStore()
@@ -77,6 +77,11 @@ export function RestaurantCard() {
   return (
     <div style={{ margin: '12px 16px' }}>
       {historySummary}
+      {cacheState === 'stale-cache' && (
+        <Tag color="warning" style={{ marginBottom: 8 }}>
+          使用离线缓存结果
+        </Tag>
+      )}
       <div style={{ fontSize: 14, color: '#666', margin: '12px 0 8px' }}>🎯 推荐</div>
       <Card
         title={recommended.name}

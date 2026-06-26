@@ -7,12 +7,14 @@ import { RestaurantCard } from './components/RestaurantCard'
 import { WishlistDrawer } from './components/WishlistDrawer'
 import { SettingsPanel } from './components/SettingsPanel'
 import { OnboardingModal } from './components/OnboardingModal'
+import { OfflineBanner } from './components/OfflineBanner'
 
 function App() {
   return (
     <ErrorBoundary>
       <div>
         <NavBar back={null}>今天吃啥</NavBar>
+        <OfflineBanner />
         <LocationPicker />
         <FilterBar />
         <RandomButton />

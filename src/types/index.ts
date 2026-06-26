@@ -54,9 +54,39 @@ export interface DiningHistoryEntry {
   timestamp: number
 }
 
+export type CacheReadState = 'fresh' | 'stale' | 'miss'
+export type RestaurantCacheState = 'network' | 'fresh-cache' | 'stale-cache'
+
+export interface CacheReadResult<T> {
+  data: T | null
+  state: CacheReadState
+}
+
+export interface CachedPoiSearch {
+  id: string
+  cacheKey: string
+  restaurants: Restaurant[]
+  createdAt: number
+  expiresAt: number
+  staleAt: number
+  location: GeoLocation
+  radius: number
+  category: FoodCategory
+}
+
+export interface CachedRouteSurface {
+  id: string
+  cacheKey: string
+  surfaceKind: SurfaceKind
+  createdAt: number
+  expiresAt: number
+}
+
 export interface RestaurantState {
   items: Restaurant[]
   selected: Restaurant | null
   status: AsyncStatus
   error: string | null
+  cacheState?: RestaurantCacheState
+  lastUpdatedAt?: number
 }

@@ -1,4 +1,11 @@
-import type { FoodCategory, GeoLocation, Restaurant, SavedLocation } from '../types'
+import type {
+  FoodCategory,
+  GeoLocation,
+  Restaurant,
+  RestaurantCacheState,
+  SavedLocation,
+} from '../types'
+import { getCachedPoiSearch, setCachedPoiSearch } from './indexedDbCache'
 import { normalizePois } from './poi'
 import { enrichSurfaceKinds } from './route'
 
@@ -43,6 +50,12 @@ interface AmapResponse {
 
 const cache = new Map<string, { timestamp: number; data: Restaurant[] }>()
 
+export interface SearchNearbyResult {
+  restaurants: Restaurant[]
+  cacheState: RestaurantCacheState
+  lastUpdatedAt: number
+}
+
 function getCacheKey(location: GeoLocation, radius: number, category: FoodCategory): string {
   return `${location.lat.toFixed(4)},${location.lng.toFixed(4)},${radius},${category}`
 }
@@ -66,10 +79,30 @@ export async function searchNearby(
   radius: number,
   category: FoodCategory = 'all'
 ): Promise<Restaurant[]> {
+  const result = await searchNearbyWithMeta(key, location, radius, category)
+  return result.restaurants
+}
+
+export async function searchNearbyWithMeta(
+  key: string,
+  location: GeoLocation,
+  radius: number,
+  category: FoodCategory = 'all'
+): Promise<SearchNearbyResult> {
   const cacheKey = getCacheKey(location, radius, category)
   const cached = cache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.data
+    return { restaurants: cached.data, cacheState: 'fresh-cache', lastUpdatedAt: cached.timestamp }
+  }
+
+  const indexedDbCache = await getCachedPoiSearch({ location, radius, category })
+  if (indexedDbCache.state === 'fresh' && indexedDbCache.data) {
+    cache.set(cacheKey, { timestamp: Date.now(), data: indexedDbCache.data.restaurants })
+    return {
+      restaurants: indexedDbCache.data.restaurants,
+      cacheState: 'fresh-cache',
+      lastUpdatedAt: indexedDbCache.data.createdAt,
+    }
   }
 
   const params = new URLSearchParams({
@@ -87,23 +120,36 @@ export async function searchNearby(
     params.set('keywords', keywords)
   }
 
-  const pages = await Promise.all([1, 2].map(async (page) => {
-    params.set('page', String(page))
-    const response = await fetchWithRetry(`${PLACE_AROUND_URL}?${params.toString()}`)
-    if (!response.ok) {
-      throw new Error(`Amap API request failed: ${response.status}`)
-    }
+  try {
+    const pages = await Promise.all([1, 2].map(async (page) => {
+      params.set('page', String(page))
+      const response = await fetchWithRetry(`${PLACE_AROUND_URL}?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error(`Amap API request failed: ${response.status}`)
+      }
 
-    const data: AmapResponse = await response.json()
-    if (data.status !== '1') {
-      throw new Error(`Amap API error: ${data.info}`)
-    }
-    return data.pois ?? []
-  }))
+      const data: AmapResponse = await response.json()
+      if (data.status !== '1') {
+        throw new Error(`Amap API error: ${data.info}`)
+      }
+      return data.pois ?? []
+    }))
 
-  const restaurants = await enrichSurfaceKinds(key, location, normalizePois(pages.flat()))
-  cache.set(cacheKey, { timestamp: Date.now(), data: restaurants })
-  return restaurants
+    const restaurants = await enrichSurfaceKinds(key, location, normalizePois(pages.flat()))
+    cache.set(cacheKey, { timestamp: Date.now(), data: restaurants })
+    await setCachedPoiSearch({ location, radius, category, restaurants })
+    return { restaurants, cacheState: 'network', lastUpdatedAt: Date.now() }
+  } catch (err) {
+    if (indexedDbCache.state === 'stale' && indexedDbCache.data) {
+      cache.set(cacheKey, { timestamp: Date.now(), data: indexedDbCache.data.restaurants })
+      return {
+        restaurants: indexedDbCache.data.restaurants,
+        cacheState: 'stale-cache',
+        lastUpdatedAt: indexedDbCache.data.createdAt,
+      }
+    }
+    throw err
+  }
 }
 
 export async function searchPlace(key: string, keywords: string): Promise<SavedLocation[]> {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { Restaurant } from '../types'
-import { searchNearby } from '../services/amap'
+import type { Restaurant, RestaurantCacheState } from '../types'
+import { searchNearbyWithMeta } from '../services/amap'
 import { filterRestaurants } from '../utils/filter'
 import { pickRandom } from '../utils/random'
 import { useDiningHistoryStore } from './diningHistoryStore'
@@ -11,6 +11,8 @@ interface RestaurantState {
   selected: Restaurant | null
   status: 'idle' | 'loading' | 'success' | 'error'
   error: string | null
+  cacheState?: RestaurantCacheState
+  lastUpdatedAt?: number
   search: (key: string, location: { lat: number; lng: number }) => Promise<void>
   pickRandomRestaurant: () => void
   clearRestaurants: () => void
@@ -22,14 +24,21 @@ export const useRestaurantStore = create<RestaurantState>((set, get) => ({
   selected: null,
   status: 'idle',
   error: null,
+  cacheState: undefined,
+  lastUpdatedAt: undefined,
 
   search: async (key, location) => {
     set({ status: 'loading', error: null })
     try {
       const radius = useFilterStore.getState().radius
       const category = useFilterStore.getState().category
-      const items = await searchNearby(key, location, radius, category)
-      set({ items, status: 'success' })
+      const result = await searchNearbyWithMeta(key, location, radius, category)
+      set({
+        items: result.restaurants,
+        status: 'success',
+        cacheState: result.cacheState,
+        lastUpdatedAt: result.lastUpdatedAt,
+      })
     } catch (err) {
       set({ status: 'error', error: err instanceof Error ? err.message : '搜索失败' })
     }
@@ -47,7 +56,15 @@ export const useRestaurantStore = create<RestaurantState>((set, get) => ({
     set({ selected })
   },
 
-  clearRestaurants: () => set({ items: [], selected: null, status: 'idle', error: null }),
+  clearRestaurants: () =>
+    set({
+      items: [],
+      selected: null,
+      status: 'idle',
+      error: null,
+      cacheState: undefined,
+      lastUpdatedAt: undefined,
+    }),
 
   clearSelection: () => set({ selected: null }),
 }))

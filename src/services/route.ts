@@ -1,4 +1,9 @@
 import type { GeoLocation, Restaurant, SurfaceKind } from '../types'
+import {
+  clearRouteSurfaceCache,
+  getCachedRouteSurface,
+  setCachedRouteSurface,
+} from './indexedDbCache'
 
 const WALKING_ROUTE_URL = 'https://restapi.amap.com/v3/direction/walking'
 const ROUTE_CACHE_TTL_MS = 30 * 60 * 1000
@@ -87,6 +92,16 @@ export async function enrichSurfaceKinds(
         return
       }
 
+      const indexedDbCache = await getCachedRouteSurface({
+        origin,
+        destination: restaurant.location,
+      })
+      if (indexedDbCache.data && indexedDbCache.state !== 'miss') {
+        routeCache.set(cacheKey, { timestamp: Date.now(), value: indexedDbCache.data.surfaceKind })
+        enriched[index] = { ...restaurant, surfaceKind: indexedDbCache.data.surfaceKind }
+        return
+      }
+
       const params = new URLSearchParams({
         key,
         origin: `${origin.lng},${origin.lat}`,
@@ -107,6 +122,11 @@ export async function enrichSurfaceKinds(
         )
         const surfaceKind = classifySurfaceKind(instructions, restaurant.address)
         routeCache.set(cacheKey, { timestamp: Date.now(), value: surfaceKind })
+        await setCachedRouteSurface({
+          origin,
+          destination: restaurant.location,
+          surfaceKind,
+        })
         enriched[index] = { ...restaurant, surfaceKind }
       } catch {
         // Route enrichment is best effort; POI search remains usable if it fails.
@@ -119,4 +139,5 @@ export async function enrichSurfaceKinds(
 
 export function clearRouteCache(): void {
   routeCache.clear()
+  void clearRouteSurfaceCache()
 }

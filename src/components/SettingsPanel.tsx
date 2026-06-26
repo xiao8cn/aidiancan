@@ -7,6 +7,7 @@ import { useWishlistStore } from '../stores/wishlistStore'
 import { useRestaurantStore } from '../stores/restaurantStore'
 import { useDiningHistoryStore } from '../stores/diningHistoryStore'
 import { clearRouteCache } from '../services/route'
+import { clearIndexedDbCache } from '../services/indexedDbCache'
 
 const APP_STORAGE_KEYS = [
   'wte-settings',
@@ -51,7 +52,7 @@ export function SettingsPanel() {
       content: '确定要清除所有本地数据吗？此操作不可恢复。',
       confirmText: '确定',
       cancelText: '取消',
-      onConfirm: () => {
+      onConfirm: async () => {
         APP_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key))
         useSettingsStore.setState({ amapKey: '', isFirstVisit: true })
         useLocationStore.setState({
@@ -83,6 +84,7 @@ export function SettingsPanel() {
         useDiningHistoryStore.setState({ recommended: [], eaten: [] })
         useRestaurantStore.setState({ items: [], selected: null, status: 'idle', error: null })
         clearRouteCache()
+        await clearIndexedDbCache()
         Toast.show({ content: '已清除本地数据', position: 'bottom' })
       },
     })
