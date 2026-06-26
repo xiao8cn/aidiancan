@@ -12,6 +12,7 @@ describe('FilterBar', () => {
       category: 'all',
       minRating: 3,
       maxRating: 5,
+      surfaceMode: 'any',
     })
   })
 
@@ -32,11 +33,20 @@ describe('FilterBar', () => {
 
   it('renders category options', () => {
     render(<FilterBar />)
-    expect(screen.getByText('主食')).toBeInTheDocument()
-    expect(screen.getByText('米')).toBeInTheDocument()
-    expect(screen.getByText('面')).toBeInTheDocument()
-    expect(screen.getByText('汉堡')).toBeInTheDocument()
+    expect(screen.getByText('餐品')).toBeInTheDocument()
+    expect(screen.getByText('饭类')).toBeInTheDocument()
+    expect(screen.getByText('粉面粥')).toBeInTheDocument()
+    expect(screen.getByText('快餐简餐')).toBeInTheDocument()
     expect(screen.getByText('轻食')).toBeInTheDocument()
+  })
+
+  it('renders route surface options', () => {
+    render(<FilterBar />)
+    expect(screen.getByText('路线')).toBeInTheDocument()
+    expect(screen.getByText('不限')).toBeInTheDocument()
+    expect(screen.getByText('路上')).toBeInTheDocument()
+    expect(screen.getByText('地下')).toBeInTheDocument()
+    expect(screen.getByText('商场内')).toBeInTheDocument()
   })
 
   it('renders rating inputs', () => {

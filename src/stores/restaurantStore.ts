@@ -3,6 +3,7 @@ import type { Restaurant } from '../types'
 import { searchNearby } from '../services/amap'
 import { filterRestaurants } from '../utils/filter'
 import { pickRandom } from '../utils/random'
+import { useDiningHistoryStore } from './diningHistoryStore'
 import { useFilterStore } from './filterStore'
 
 interface RestaurantState {
@@ -37,7 +38,13 @@ export const useRestaurantStore = create<RestaurantState>((set, get) => ({
   pickRandomRestaurant: () => {
     const filter = useFilterStore.getState()
     const filtered = filterRestaurants(get().items, filter)
-    set({ selected: pickRandom(filtered) })
+    const recentIds = useDiningHistoryStore.getState().getRecentRestaurantIds()
+    const fresh = filtered.filter((restaurant) => !recentIds.has(restaurant.id))
+    const selected = pickRandom(fresh.length > 0 ? fresh : filtered)
+    if (selected) {
+      useDiningHistoryStore.getState().addRecommendation(selected)
+    }
+    set({ selected })
   },
 
   clearRestaurants: () => set({ items: [], selected: null, status: 'idle', error: null }),

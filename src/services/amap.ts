@@ -1,4 +1,6 @@
 import type { FoodCategory, GeoLocation, Restaurant, SavedLocation } from '../types'
+import { normalizePois } from './poi'
+import { enrichSurfaceKinds } from './route'
 
 const PLACE_AROUND_URL = 'https://restapi.amap.com/v3/place/around'
 const PLACE_TEXT_URL = 'https://restapi.amap.com/v3/place/text'
@@ -7,19 +9,23 @@ const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 const CATEGORY_KEYWORDS: Record<FoodCategory, string | undefined> = {
   all: undefined,
-  rice: '米饭|盖浇饭|煲仔饭|中式快餐',
-  noodles: '面|粉|拉面|牛肉面',
-  burger: '汉堡|披萨|三明治',
+  rice: '烧腊饭|煲仔饭|快餐饭|盖浇饭',
+  noodles: '汤粉|河粉|肠粉|粥|面',
+  quick: '茶餐厅|快餐|简餐|便当',
   light: '轻食|沙拉|减脂餐',
 }
 
-interface AmapPoi {
+export interface AmapPoi {
   id: string
   name: string
   address: string
   location: string
   tel?: string
   distance?: string
+  type?: string
+  typecode?: string
+  adname?: string
+  business_area?: string
   biz_ext?: {
     rating?: string
     cost?: string
@@ -39,20 +45,6 @@ const cache = new Map<string, { timestamp: number; data: Restaurant[] }>()
 
 function getCacheKey(location: GeoLocation, radius: number, category: FoodCategory): string {
   return `${location.lat.toFixed(4)},${location.lng.toFixed(4)},${radius},${category}`
-}
-
-function parsePoi(poi: AmapPoi): Restaurant {
-  const [lng, lat] = poi.location.split(',').map(Number)
-  return {
-    id: poi.id,
-    name: poi.name,
-    address: poi.address,
-    location: { lat, lng },
-    tel: poi.tel,
-    distance: poi.distance ? Number(poi.distance) : undefined,
-    rating: poi.biz_ext?.rating ? Number(poi.biz_ext?.rating) : undefined,
-    cost: poi.biz_ext?.cost ? Number(poi.biz_ext?.cost) : undefined,
-  }
 }
 
 async function fetchWithRetry(url: string, retries = 1): Promise<Response> {
@@ -95,17 +87,21 @@ export async function searchNearby(
     params.set('keywords', keywords)
   }
 
-  const response = await fetchWithRetry(`${PLACE_AROUND_URL}?${params.toString()}`)
-  if (!response.ok) {
-    throw new Error(`Amap API request failed: ${response.status}`)
-  }
+  const pages = await Promise.all([1, 2].map(async (page) => {
+    params.set('page', String(page))
+    const response = await fetchWithRetry(`${PLACE_AROUND_URL}?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error(`Amap API request failed: ${response.status}`)
+    }
 
-  const data: AmapResponse = await response.json()
-  if (data.status !== '1') {
-    throw new Error(`Amap API error: ${data.info}`)
-  }
+    const data: AmapResponse = await response.json()
+    if (data.status !== '1') {
+      throw new Error(`Amap API error: ${data.info}`)
+    }
+    return data.pois ?? []
+  }))
 
-  const restaurants = (data.pois ?? []).map(parsePoi)
+  const restaurants = await enrichSurfaceKinds(key, location, normalizePois(pages.flat()))
   cache.set(cacheKey, { timestamp: Date.now(), data: restaurants })
   return restaurants
 }
@@ -116,7 +112,6 @@ export async function searchPlace(key: string, keywords: string): Promise<SavedL
   const params = new URLSearchParams({
     key,
     keywords: keywords.trim(),
-    types: '050000',
     offset: '10',
     page: '1',
     extensions: 'base',

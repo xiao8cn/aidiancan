@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { FilterState, FoodCategory } from '../types'
+import type { FilterState, FoodCategory, SurfaceMode } from '../types'
 
 export const PRICE_SLIDER_MIN = 0
 export const PRICE_SLIDER_MAX = 200
@@ -14,6 +14,7 @@ interface FilterStore extends FilterState {
   setCategory: (category: FoodCategory) => void
   setMinRating: (value: number) => void
   setMaxRating: (value: number) => void
+  setSurfaceMode: (surfaceMode: SurfaceMode) => void
 }
 
 export const useFilterStore = create<FilterStore>()(
@@ -25,11 +26,13 @@ export const useFilterStore = create<FilterStore>()(
       category: 'all',
       minRating: DEFAULT_MIN_RATING,
       maxRating: DEFAULT_MAX_RATING,
+      surfaceMode: 'any',
       setRadius: (radius) => set({ radius }),
       setPriceRange: ([minPrice, maxPrice]) => set({ minPrice, maxPrice }),
       setCategory: (category) => set({ category }),
       setMinRating: (minRating) => set({ minRating }),
       setMaxRating: (maxRating) => set({ maxRating }),
+      setSurfaceMode: (surfaceMode) => set({ surfaceMode }),
     }),
     { name: 'wte-filter' }
   )

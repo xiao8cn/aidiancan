@@ -1,9 +1,17 @@
-import { Card, List, Space, Tag } from 'antd-mobile'
+import { Button, Card, List, Space, Tag, Toast } from 'antd-mobile'
 import { useRestaurantStore } from '../stores/restaurantStore'
 import { useFilterStore } from '../stores/filterStore'
 import { useWishlistStore } from '../stores/wishlistStore'
+import { useDiningHistoryStore } from '../stores/diningHistoryStore'
 import { filterRestaurants } from '../utils/filter'
-import type { Restaurant } from '../types'
+import type { Restaurant, SurfaceKind } from '../types'
+
+const SURFACE_LABELS: Record<SurfaceKind, string> = {
+  outdoor: '路上',
+  underground: '地下',
+  indoor: '商场内',
+  unknown: '未知',
+}
 
 function CompactItem({ restaurant }: { restaurant: Restaurant }) {
   const meta: string[] = []
@@ -25,20 +33,35 @@ function CompactItem({ restaurant }: { restaurant: Restaurant }) {
 }
 
 export function RestaurantCard() {
-  const { items, selected } = useRestaurantStore()
+  const { items, selected, pickRandomRestaurant } = useRestaurantStore()
   const filter = useFilterStore()
   const { tags, toggleRestaurantTag, getRestaurantTags } = useWishlistStore()
+  const { recommended: recommendedHistory, eaten, addEaten } = useDiningHistoryStore()
 
   const filtered = filterRestaurants(items, filter)
   const sorted = [...filtered].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+  const lastRecommended = recommendedHistory[0]
+  const recentEaten = eaten[0]
+
+  const historySummary = (
+    <Space block direction="vertical" style={{ margin: '12px 16px 0' }}>
+      {lastRecommended && (
+        <Tag color="primary">上次推荐：{lastRecommended.restaurant.name}</Tag>
+      )}
+      {recentEaten && <Tag color="success">最近已吃：{recentEaten.restaurant.name}</Tag>}
+    </Space>
+  )
 
   if (sorted.length === 0 && !selected) {
     return (
-      <Card style={{ margin: '12px 16px' }}>
-        <div style={{ color: '#999', textAlign: 'center', padding: '24px 0' }}>
-          点击上方按钮，随机选一家餐厅
-        </div>
-      </Card>
+      <>
+        {historySummary}
+        <Card style={{ margin: '12px 16px' }}>
+          <div style={{ color: '#999', textAlign: 'center', padding: '24px 0' }}>
+            点击上方按钮，随机选一家餐厅
+          </div>
+        </Card>
+      </>
     )
   }
 
@@ -46,9 +69,15 @@ export function RestaurantCard() {
   const others = sorted.filter((r) => r.id !== recommended.id)
   const recommendedTags = getRestaurantTags(recommended.id)
 
+  const handleMarkEaten = () => {
+    addEaten(recommended)
+    Toast.show({ content: '已记录到最近已吃', position: 'bottom' })
+  }
+
   return (
     <div style={{ margin: '12px 16px' }}>
-      <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>🎯 推荐</div>
+      {historySummary}
+      <div style={{ fontSize: 14, color: '#666', margin: '12px 0 8px' }}>🎯 推荐</div>
       <Card
         title={recommended.name}
         extra={recommended.distance !== undefined ? `${recommended.distance}m` : undefined}
@@ -56,6 +85,7 @@ export function RestaurantCard() {
         <Space block direction="vertical">
           {recommended.rating !== undefined && <div>评分：{recommended.rating}</div>}
           {recommended.cost !== undefined && <div>人均：¥{recommended.cost}</div>}
+          <div>路线：{SURFACE_LABELS[recommended.surfaceKind]}</div>
           <div>地址：{recommended.address}</div>
           {recommended.tel && <div>电话：{recommended.tel}</div>}
 
@@ -69,6 +99,14 @@ export function RestaurantCard() {
                 {tag}
               </Tag>
             ))}
+          </Space>
+          <Space block>
+            <Button size="small" color="primary" onClick={handleMarkEaten}>
+              已吃这家
+            </Button>
+            <Button size="small" fill="outline" onClick={pickRandomRestaurant}>
+              换一家
+            </Button>
           </Space>
         </Space>
       </Card>

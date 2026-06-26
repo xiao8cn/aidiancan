@@ -1,11 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RestaurantCard } from '../RestaurantCard'
+import { useDiningHistoryStore } from '../../stores/diningHistoryStore'
 import { useRestaurantStore } from '../../stores/restaurantStore'
+import { useFilterStore } from '../../stores/filterStore'
+import { useWishlistStore } from '../../stores/wishlistStore'
 
 describe('RestaurantCard', () => {
   beforeEach(() => {
     useRestaurantStore.setState({ items: [], selected: null, status: 'idle', error: null })
+    useDiningHistoryStore.setState({ recommended: [], eaten: [] })
+    useFilterStore.setState({
+      radius: 1000,
+      minPrice: 0,
+      maxPrice: 200,
+      category: 'all',
+      minRating: 0,
+      maxRating: 5,
+      surfaceMode: 'any',
+    })
+    useWishlistStore.setState({ tags: ['想吃'], restaurantTags: {} })
   })
 
   it('renders placeholder when no restaurant is selected', () => {
@@ -20,6 +34,8 @@ describe('RestaurantCard', () => {
         name: '测试餐厅',
         address: '测试地址',
         location: { lat: 39.9, lng: 116.4 },
+        category: 'quick',
+        surfaceKind: 'outdoor',
         distance: 500,
         rating: 4.5,
         cost: 80,
@@ -32,5 +48,32 @@ describe('RestaurantCard', () => {
     expect(screen.getByText('评分：4.5')).toBeInTheDocument()
     expect(screen.getByText('人均：¥80')).toBeInTheDocument()
     expect(screen.getByText('电话：010-12345678')).toBeInTheDocument()
+    expect(screen.getByText('路线：路上')).toBeInTheDocument()
+    expect(screen.getByText('已吃这家')).toBeInTheDocument()
+    expect(screen.getByText('换一家')).toBeInTheDocument()
+  })
+
+  it('shows the last recommendation and recent eaten history', () => {
+    useDiningHistoryStore.getState().addRecommendation({
+      id: 'last',
+      name: '上次餐厅',
+      address: '上次地址',
+      location: { lat: 23, lng: 113 },
+      category: 'quick',
+      surfaceKind: 'unknown',
+    })
+    useDiningHistoryStore.getState().addEaten({
+      id: 'eaten',
+      name: '已吃餐厅',
+      address: '已吃地址',
+      location: { lat: 23, lng: 113 },
+      category: 'rice',
+      surfaceKind: 'unknown',
+    })
+
+    render(<RestaurantCard />)
+
+    expect(screen.getByText('上次推荐：上次餐厅')).toBeInTheDocument()
+    expect(screen.getByText('最近已吃：已吃餐厅')).toBeInTheDocument()
   })
 })

@@ -8,6 +8,8 @@ describe('filterRestaurants', () => {
     name: 'Test',
     address: 'Addr',
     location: { lat: 0, lng: 0 },
+    category: 'quick',
+    surfaceKind: 'unknown',
     distance: 500,
   }
 
@@ -19,6 +21,7 @@ describe('filterRestaurants', () => {
       category: 'all',
       minRating: 0,
       maxRating: 5,
+      surfaceMode: 'any',
       ...overrides,
     }
   }
@@ -70,5 +73,17 @@ describe('filterRestaurants', () => {
     expect(filterRestaurants([{ ...base, rating: 4.5 }], filter)).toHaveLength(1)
     expect(filterRestaurants([{ ...base, rating: 5 }], filter)).toHaveLength(0)
     expect(filterRestaurants([{ ...base }], filter)).toHaveLength(0)
+  })
+
+  it('filters by normalized category', () => {
+    const filter = makeFilter({ category: 'rice' })
+    expect(filterRestaurants([{ ...base, category: 'quick' }], filter)).toHaveLength(0)
+    expect(filterRestaurants([{ ...base, category: 'rice' }], filter)).toHaveLength(1)
+  })
+
+  it('filters by route surface mode', () => {
+    const filter = makeFilter({ surfaceMode: 'outdoor' })
+    expect(filterRestaurants([{ ...base, surfaceKind: 'unknown' }], filter)).toHaveLength(0)
+    expect(filterRestaurants([{ ...base, surfaceKind: 'outdoor' }], filter)).toHaveLength(1)
   })
 })

@@ -5,7 +5,7 @@ import {
   PRICE_SLIDER_MAX,
   PRICE_SLIDER_STEP,
 } from '../stores/filterStore'
-import type { FoodCategory } from '../types'
+import type { FoodCategory, SurfaceMode } from '../types'
 
 const DISTANCE_OPTIONS = [
   { label: '500m', value: 500 },
@@ -16,10 +16,17 @@ const DISTANCE_OPTIONS = [
 
 const CATEGORY_OPTIONS = [
   { label: '全部', value: 'all' },
-  { label: '米', value: 'rice' },
-  { label: '面', value: 'noodles' },
-  { label: '汉堡', value: 'burger' },
+  { label: '饭类', value: 'rice' },
+  { label: '粉面粥', value: 'noodles' },
+  { label: '快餐简餐', value: 'quick' },
   { label: '轻食', value: 'light' },
+]
+
+const SURFACE_OPTIONS = [
+  { label: '不限', value: 'any' },
+  { label: '路上', value: 'outdoor' },
+  { label: '地下', value: 'underground' },
+  { label: '商场内', value: 'indoor' },
 ]
 
 function formatPriceLabel(value: number): string {
@@ -36,11 +43,13 @@ export function FilterBar() {
     minPrice,
     maxPrice,
     category,
+    surfaceMode,
     minRating,
     maxRating,
     setRadius,
     setPriceRange,
     setCategory,
+    setSurfaceMode,
     setMinRating,
     setMaxRating,
   } = useFilterStore()
@@ -70,11 +79,19 @@ export function FilterBar() {
         />
       </div>
       <div>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>主食</div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>餐品</div>
         <Selector
           options={CATEGORY_OPTIONS}
           value={[category]}
           onChange={(v) => setCategory(v[0] as FoodCategory)}
+        />
+      </div>
+      <div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>路线</div>
+        <Selector
+          options={SURFACE_OPTIONS}
+          value={[surfaceMode]}
+          onChange={(v) => setSurfaceMode(v[0] as SurfaceMode)}
         />
       </div>
       <div>

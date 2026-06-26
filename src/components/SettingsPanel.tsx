@@ -5,8 +5,16 @@ import { useLocationStore } from '../stores/locationStore'
 import { useFilterStore } from '../stores/filterStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { useRestaurantStore } from '../stores/restaurantStore'
+import { useDiningHistoryStore } from '../stores/diningHistoryStore'
+import { clearRouteCache } from '../services/route'
 
-const APP_STORAGE_KEYS = ['wte-settings', 'wte-location', 'wte-filter', 'wte-wishlist']
+const APP_STORAGE_KEYS = [
+  'wte-settings',
+  'wte-location',
+  'wte-filter',
+  'wte-wishlist',
+  'wte-dining-history',
+]
 
 export function SettingsPanel() {
   const [visible, setVisible] = useState(false)
@@ -16,13 +24,16 @@ export function SettingsPanel() {
   const handleExport = () => {
     const { amapKey, isFirstVisit } = useSettingsStore.getState()
     const { savedLocations, current, address } = useLocationStore.getState()
-    const { radius, minPrice, maxPrice, category, minRating, maxRating } = useFilterStore.getState()
+    const { radius, minPrice, maxPrice, category, minRating, maxRating, surfaceMode } =
+      useFilterStore.getState()
     const { tags, restaurantTags } = useWishlistStore.getState()
+    const { recommended, eaten } = useDiningHistoryStore.getState()
     const data = {
       settings: { amapKey, isFirstVisit },
       location: { savedLocations, current, address },
-      filter: { radius, minPrice, maxPrice, category, minRating, maxRating },
+      filter: { radius, minPrice, maxPrice, category, minRating, maxRating, surfaceMode },
       wishlist: { tags, restaurantTags },
+      history: { recommended, eaten },
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -50,8 +61,13 @@ export function SettingsPanel() {
           error: null,
           errorCode: null,
           savedLocations: [
-            { id: 'home', name: '家', address: '常用地点：家', location: { lat: 39.9042, lng: 116.4074 } },
-            { id: 'company', name: '公司', address: '常用地点：公司', location: { lat: 39.9042, lng: 116.4074 } },
+            { id: 'home', name: '家', address: '常用地点：家', location: { lat: 23.1291, lng: 113.2644 } },
+            {
+              id: 'company',
+              name: '公司',
+              address: '常用地点：公司',
+              location: { lat: 23.1291, lng: 113.2644 },
+            },
           ],
         })
         useFilterStore.setState({
@@ -61,9 +77,12 @@ export function SettingsPanel() {
           category: 'all',
           minRating: 3,
           maxRating: 5,
+          surfaceMode: 'any',
         })
         useWishlistStore.setState({ tags: ['想吃', '聚餐', '快餐', '清淡'], restaurantTags: {} })
+        useDiningHistoryStore.setState({ recommended: [], eaten: [] })
         useRestaurantStore.setState({ items: [], selected: null, status: 'idle', error: null })
+        clearRouteCache()
         Toast.show({ content: '已清除本地数据', position: 'bottom' })
       },
     })

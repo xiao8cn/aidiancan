@@ -8,6 +8,14 @@ export function filterRestaurants(restaurants: Restaurant[], filter: FilterState
       return false
     }
 
+    if (filter.category !== 'all' && restaurant.category !== filter.category) {
+      return false
+    }
+
+    if (filter.surfaceMode !== 'any' && restaurant.surfaceKind !== filter.surfaceMode) {
+      return false
+    }
+
     const hasPriceFilter = filter.minPrice > 0 || filter.maxPrice < PRICE_SLIDER_MAX
 
     if (hasPriceFilter) {
